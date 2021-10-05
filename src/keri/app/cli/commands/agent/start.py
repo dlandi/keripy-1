@@ -21,16 +21,15 @@ from keri import kering
 from keri.app import directing, agenting, indirecting, storing, grouping
 from keri.app.cli.common import existing
 from keri.core import scheming, coring
+from keri.help import helping
 from keri.peer import exchanging
 from keri.vc import walleting, handling, proving
 from keri.vdr import verifying, viring
 
-
 WEB_DIR_PATH = os.path.dirname(
-                os.path.abspath(
-                    sys.modules.get(__name__).__file__))
+    os.path.abspath(
+        sys.modules.get(__name__).__file__))
 STATIC_DIR_PATH = os.path.join(WEB_DIR_PATH, 'static')
-
 
 d = "Runs KERI Agent controller.\n"
 d += "Example:\nagent -t 5621\n"
@@ -66,9 +65,9 @@ def launch(args):
     help.ogler.reopen(name="keri", temp=True, clear=True)
     logger = help.ogler.getLogger()
 
-    logger.info("\n******* Starting Agent for %s listening: http/%s, tcp/%s "
-                ".******\n\n", args.name, args.admin_http_port, args.tcp)
-    print("Starting agent", args.name)
+    print("\n******* Starting Agent for {} listening: http/{}, tcp/{} "
+          ".******\n\n".format(args.name, args.admin_http_port, args.tcp))
+
     doers = runAgent(controller=args.controller, name=args.name, insecure=args.insecure,
                      tcp=int(args.tcp),
                      adminHttpPort=int(args.admin_http_port), path=args.path)
@@ -79,9 +78,8 @@ def launch(args):
     except kering.ConfigurationError:
         print(f"prefix for {args.name} does not exist, incept must be run first", )
 
-
-    logger.info("\n******* Ended Agent for %s listening: http/%s, tcp/%s"
-                ".******\n\n", args.name, args.admin_http_port, args.tcp)
+    print("\n******* Ended Agent for {} listening: http/{}, tcp/{}"
+          ".******\n\n".format(args.name, args.admin_http_port, args.tcp))
 
 
 def runAgent(controller, name="agent", insecure=False, tcp=5621, adminHttpPort=5623, path=STATIC_DIR_PATH):
@@ -155,7 +153,6 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
     rep = storing.Respondant(hab=hab, mbx=mbx)
 
-    httpHandler = indirecting.HttpMessageHandler(hab=hab, app=app, rep=rep)
     gdoer = grouping.MultiSigGroupDoer(hab=hab, ims=mbd.ims)
 
     kiwiServer = agenting.KiwiServer(hab=hab, controller=controller, verifier=verifier, gdoer=gdoer.msgs, app=app,
@@ -169,7 +166,7 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
     server = http.Server(port=adminHttpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
 
-    doers = [httpServerDoer, httpHandler, rep, mbxer, wiq, proofHandler, cueHandler, gdoer, kiwiServer]
+    doers = [httpServerDoer, rep, mbxer, wiq, proofHandler, cueHandler, gdoer, kiwiServer]
 
     return doers
 
@@ -245,8 +242,10 @@ class AdminCueHandler(doing.DoDoer):
         self.hab = hab
         self.mbx = mbx
         self.cues = cues if cues is not None else decking.Deck()
+        self.witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.HttpWitnesser)
 
-        super(AdminCueHandler, self).__init__(doers=[doing.doify(self.cueDo)], **kwa)
+
+        super(AdminCueHandler, self).__init__(doers=[self.witq, doing.doify(self.cueDo)], **kwa)
 
     def cueDo(self, tymth, tock=0.0, **opts):
         """
@@ -275,19 +274,46 @@ class AdminCueHandler(doing.DoDoer):
                         yield self.tock
 
                     self.remove([witRctDoer])
+                if cue["kin"] == "delegatage":
+                    delpre = cue["delpre"]
+                    self.witq.query(pre=delpre)
+
                 elif cueKin in ("psUnescrow",):
                     srdr = cue["serder"]
-                    wits = srdr.ked["b"]
-                    witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.HttpWitnesser, wits=wits)
-                    self.extend([witq])
+                    if self.hab.kever.delegator is None:
+                        if srdr.pre in self.hab.kevers:
+                            kever = self.hab.kevers[srdr.pre]
+                            wits = kever.wits
+                        else:
+                            wits = srdr.ked["b"]
+                        witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.HttpWitnesser, wits=wits)
+                        self.extend([witq])
 
-                    while srdr.pre not in self.hab.kevers:
-                        witq.query(pre=srdr.pre)
-                        yield 1.0
+                        while srdr.pre not in self.hab.kevers:  # TODO: check sn here.
+                            witq.query(pre=srdr.pre)
+                            yield 1.0
 
-                    print("Successfully deletated to", srdr.pre)
+                        print("Successfully deletated to", srdr.pre, "for", srdr.ked["t"], ":", srdr.ked["s"])
+                    else:
+                        self.hab.delegatedRotationAccepted()
+                        evt = self.hab.makeOwnEvent(sn=self.hab.kever.sn)
+                        witDoer = agenting.WitnessReceiptor(hab=self.hab, msg=evt, klas=agenting.TCPWitnesser)
+                        self.extend([witDoer])
+                        while not witDoer.done:
+                            yield self.tock
+
+                        self.remove([witDoer])
+                        print("Successfully received delegation", "for", self.hab.kever.ilk, ":", self.hab.kever.sn)
+                        payload = dict(
+                            delegator=self.hab.kever.delegator,
+                            t=self.hab.kever.ilk,
+                            s=self.hab.kever.sn,
+                            dt=helping.nowIso8601())
+                        ser = exchanging.exchange(route="/delegate", payload=payload)
+                        msg = bytearray(ser.raw)
+                        msg.extend(self.hab.sanction(ser))
+                        self.mbx.storeMsg(self.controller + "/delegate", msg)
 
 
                 yield self.tock
             yield self.tock
-

@@ -13,6 +13,7 @@ from hio.base import doing
 from hio.core import http
 from hio.core.tcp import clienting
 from hio.help import decking
+from keri.app import forwarding
 from orderedset import OrderedSet as oset
 
 from . import httping, grouping
@@ -476,6 +477,7 @@ class KiwiServer(doing.DoDoer):
         self.issuerCues = issuerCues if issuerCues is not None else decking.Deck()
 
         self.app.add_route("/id", self, suffix="id")
+        self.app.add_route("/rotate", self, suffix="rotate")
         self.app.add_route("/registry/incept", self, suffix="registry_incept")
         self.registryIcpr = registering.RegistryInceptDoer(hab=hab)
         self.app.add_route("/credential/apply", self, suffix="apply")
@@ -498,8 +500,9 @@ class KiwiServer(doing.DoDoer):
         # self.delrotr = delegating.RotateDoer(hab=hab)
 
         self.witq = WitnessInquisitor(hab=hab, klas=HttpWitnesser)
+        self.postman = forwarding.Postman(hab=self.hab)
 
-        doers = [self.witq, self.registryIcpr, doing.doify(self.verifierDo), doing.doify(
+        doers = [self.witq, self.postman, self.registryIcpr, doing.doify(self.verifierDo), doing.doify(
             self.issuerDo), doing.doify(self.escrowDo)]
 
         super(KiwiServer, self).__init__(doers=doers, **kwa)
@@ -795,6 +798,59 @@ class KiwiServer(doing.DoDoer):
 
         rep.status = falcon.HTTP_202
 
+    def on_post_rotate(self, req, rep):
+        """
+        Rotate the local identifier
+
+        Parameters:
+            req: falcon.Request HTTP request
+            rep: falcon.Response HTTP response
+
+        Body:
+            name: The human readable name of the new registry to create
+
+        """
+        body = json.loads(req.context.raw)
+        wits = body.get("wits")
+        toad = int(body.get("toad"))
+        isith = int(body.get("isith"))
+        count = int(body.get("count"))
+        cuts = set()
+        adds = set()
+
+        if wits:
+            ewits = self.hab.kever.wits
+
+            # wits= [a,b,c]  wits=[b, z]
+            cuts = set(ewits) - set(wits)
+            adds = set(wits) - set(ewits)
+
+        try:
+            rot = self.hab.rotate(sith=isith, count=count, erase=True, toad=toad,
+                                  cuts=list(cuts), adds=list(adds))
+
+            if self.hab.kever.delegator is None:
+
+                witDoer = WitnessReceiptor(hab=self.hab, msg=rot)
+                self.extend(doers=[witDoer])
+
+                rep.status = falcon.HTTP_200
+                rep.text = "Successful rotate to event number {}".format(self.hab.kever.sn)
+
+            else:
+                cloner = self.hab.db.clonePreIter(pre=self.hab.pre, fn=0)  # create iterator at 0
+                for msg in cloner:
+                    self.postman.send(recipient=self.hab.kever.delegator, topic="delegate", msg=msg)
+
+                self.postman.send(recipient=self.hab.kever.delegator, topic="delegate", msg=rot)
+                rep.status = falcon.HTTP_202
+
+
+        except (ValueError, TypeError) as e:
+            rep.status = falcon.HTTP_400
+            rep.text = e.args[0]
+
+
     def on_post_multisig_rotate(self, req, rep):
         """
 
@@ -897,6 +953,7 @@ class KiwiServer(doing.DoDoer):
                 seq_no=kever.sn,
                 aids=group.aids,
                 delegated=kever.delegated,
+                delegator=kever.delegator,
                 witnesses=kever.wits,
                 public_keys=[verfer.qb64 for verfer in kever.verfers],
                 toad=kever.toad,
@@ -1049,6 +1106,7 @@ class KiwiServer(doing.DoDoer):
                 prefix=habr.prefix,
                 seq_no=kever.sn,
                 delegated=kever.delegated,
+                delegator=kever.delegator,
                 witnesses=kever.wits,
                 public_keys=[verfer.qb64 for verfer in kever.verfers],
                 toad=kever.toad,

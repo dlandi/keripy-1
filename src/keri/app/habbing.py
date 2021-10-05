@@ -326,7 +326,7 @@ class Habitat:
             except MissingDelegationError or MissingSignatureError:
                 pass
             except Exception as ex:
-                    raise kering.ConfigurationError("Improper Habitat inception for "
+                raise kering.ConfigurationError("Improper Habitat inception for "
                                                 "pre={} {}".format(self.pre, ex))
 
             self.accepted = self.pre in self.kevers
@@ -340,6 +340,14 @@ class Habitat:
             raise Exception()
 
         self.accepted = True
+
+    def delegatedRotationAccepted(self):
+        # process escrow
+        self.kvy.processEscrows()
+        if self.pre not in self.kevers:
+            raise Exception()
+
+        self.ridx += 1
 
     def reinitialize(self):
         if self.pre is None:
@@ -415,7 +423,6 @@ class Habitat:
     def group(self):
         return self.db.gids.get(self.pre)
 
-
     def rotate(self, sith=None, count=None, erase=None,
                toad=None, cuts=None, adds=None, data=None):
         """
@@ -459,27 +466,44 @@ class Habitat:
             nxt = ""
 
         # this is wrong sith is not kever.tholder.sith as next was different
-        serder = eventing.rotate(pre=kever.prefixer.qb64,
-                                 keys=[verfer.qb64 for verfer in verfers],
-                                 dig=kever.serder.diger.qb64,
-                                 sn=kever.sn + 1,
-                                 sith=cst,
-                                 nxt=nxt,
-                                 toad=toad,
-                                 wits=kever.wits,
-                                 cuts=cuts,
-                                 adds=adds,
-                                 data=data)
+        if kever.delegator is not None:
+            serder = eventing.deltate(pre=kever.prefixer.qb64,
+                                      keys=[verfer.qb64 for verfer in verfers],
+                                      dig=kever.serder.diger.qb64,
+                                      sn=kever.sn + 1,
+                                      sith=cst,
+                                      nxt=nxt,
+                                      toad=toad,
+                                      wits=kever.wits,
+                                      cuts=cuts,
+                                      adds=adds,
+                                      data=data)
+        else:
+            serder = eventing.rotate(pre=kever.prefixer.qb64,
+                                     keys=[verfer.qb64 for verfer in verfers],
+                                     dig=kever.serder.diger.qb64,
+                                     sn=kever.sn + 1,
+                                     sith=cst,
+                                     nxt=nxt,
+                                     toad=toad,
+                                     wits=kever.wits,
+                                     cuts=cuts,
+                                     adds=adds,
+                                     data=data)
 
         sigers = self.mgr.sign(ser=serder.raw, verfers=verfers)
         # update own key event verifier state
-        # self.kvy.processEvent(serder=serder, sigers=sigers)
         msg = eventing.messagize(serder, sigers=sigers)
-        self.psr.parseOne(ims=bytearray(msg))  # make copy as kvr deletes
-        if kever.serder.dig != serder.dig:
+
+        try:
+            self.kvy.processEvent(serder=serder, sigers=sigers)
+        except MissingDelegationError or MissingSignatureError:
+            pass
+        except Exception as ex:
             raise kering.ValidationError("Improper Habitat rotation for "
                                          "pre={}.".format(self.pre))
-        self.ridx += 1  # successful rotate so increment for next time
+        else:
+            self.ridx += 1  # successful rotate so increment for next time
 
         return msg
 
@@ -695,14 +719,12 @@ class Habitat:
                                       " for ksn = {}."
                                       "".format(sn, sserder.ked))
 
-
             verfers = sserder.verfers
             tholder = sserder.tholder
 
         else:
             verfers = [coring.Verfer(qb64=pre)]
             tholder = coring.Tholder(sith="1")
-
 
         return tholder, verfers
 
@@ -737,7 +759,6 @@ class Habitat:
             msgs.extend(msg)
         return msgs
 
-
     def makeOtherEvent(self, pre, sn):
         """
         Returns: messagized bytearray message with attached signatures of
@@ -764,7 +785,6 @@ class Habitat:
             msg.extend(sig)  # attach sig
         return (msg)
 
-
     def fetchEnd(self, cid: str, role: str, eid: str):
         """
         Returns:
@@ -772,14 +792,12 @@ class Habitat:
         """
         return self.db.ends.get(keys=(cid, role, eid))
 
-
-    def fetchLoc(self, eid: str, scheme: str=kering.Schemes.http):
+    def fetchLoc(self, eid: str, scheme: str = kering.Schemes.http):
         """
         Returns:
             location (basing.LocationRecord): instance or None
         """
         return self.db.locs.get(keys=(eid, scheme))
-
 
     def fetchEndAllowed(self, cid: str, role: str, eid: str):
         """
@@ -795,7 +813,6 @@ class Habitat:
         end = self.db.ends.get(keys=(cid, role, eid))
         return (end.allowed if end else None)
 
-
     def fetchEndEnabled(self, cid: str, role: str, eid: str):
         """
         Returns:
@@ -809,7 +826,6 @@ class Habitat:
         """
         end = self.db.ends.get(keys=(cid, role, eid))
         return (end.enabled if end else None)
-
 
     def fetchEndAuthzed(self, cid: str, role: str, eid: str):
         """
@@ -825,8 +841,7 @@ class Habitat:
         end = self.db.ends.get(keys=(cid, role, eid))
         return ((end.enabled or end.allowed) if end else None)
 
-
-    def fetchUrl(self, eid: str, scheme: str=kering.Schemes.http):
+    def fetchUrl(self, eid: str, scheme: str = kering.Schemes.http):
         """
         Returns:
             url (str): for endpoint provider given by eid
@@ -836,8 +851,7 @@ class Habitat:
         loc = self.db.locs.get(keys=(eid, scheme))
         return (loc.url if loc else loc)
 
-
-    def fetchUrls(self, eid: str, scheme: str=""):
+    def fetchUrls(self, eid: str, scheme: str = ""):
         """
         Returns:
            surls (hicting.Mict): urls keyed by scheme for given eid. Assumes that
@@ -849,11 +863,10 @@ class Habitat:
             scheme (str): url scheme
         """
         return hicting.Mict([(keys[1], loc.url) for keys, loc in
-                    self.db.locs.getItemIter(keys=(eid, scheme)) if loc.url])
+                             self.db.locs.getItemIter(keys=(eid, scheme)) if loc.url])
 
-
-    def fetchRoleUrls(self, cid: str, *,  role: str="", scheme: str="",
-                      eids=None, enabled: bool=True, allowed: bool=True):
+    def fetchRoleUrls(self, cid: str, *, role: str = "", scheme: str = "",
+                      eids=None, enabled: bool = True, allowed: bool = True):
         """
         Returns:
            rurls (hicting.Mict):  of nested dicts. The top level dict rurls is keyed by
@@ -885,7 +898,7 @@ class Habitat:
                             rurls.add(kering.Roles.witness,
                                       hicting.Mict([(eid, surls)]))
 
-        for  (_, erole , eid), end in self.db.ends.getItemIter(keys=(cid, role)):
+        for (_, erole, eid), end in self.db.ends.getItemIter(keys=(cid, role)):
             if (enabled and end.enabled) or (allowed and end.allowed):
                 if not eids or eid in eids:
                     surls = self.fetchUrls(eid, scheme=scheme)
@@ -893,9 +906,8 @@ class Habitat:
                         rurls.add(erole, hicting.Mict([(eid, surls)]))
         return rurls
 
-
-    def fetchWitnessUrls(self, cid: str, scheme: str="", eids=None,
-                         enabled: bool=True, allowed: bool=True):
+    def fetchWitnessUrls(self, cid: str, scheme: str = "", eids=None,
+                         enabled: bool = True, allowed: bool = True):
         """
         Fetch witness urls for witnesses of cid at latest key state or enabled or
         allowed witnesses if not a witness at latest key state.
@@ -921,7 +933,6 @@ class Habitat:
                                    enabled=enabled,
                                    allowed=allowed))
 
-
     def endrolize(self, eid, role=kering.Roles.controller, allow=True):
         """
 
@@ -939,7 +950,6 @@ class Habitat:
         route = "/end/role/add" if allow else "/end/role/cut"
         return self.makeReply(route=route, data=data)
 
-
     def locschemize(self, url, scheme="http"):
         """
         Returns:
@@ -951,9 +961,8 @@ class Habitat:
             scheme (str): url scheme must matche scheme in url if any
 
         """
-        data = data = dict( eid=self.pre, scheme=scheme, url=url)
+        data = data = dict(eid=self.pre, scheme=scheme, url=url)
         return self.makeReply(route="/loc/scheme", data=data)
-
 
     def makeReply(self, **kwa):
         """
@@ -969,7 +978,6 @@ class Habitat:
             kind is serialization kind
         """
         return self.endorse(eventing.reply(**kwa))
-
 
     def replyLocScheme(self, eid, scheme=None):
         """
@@ -987,7 +995,6 @@ class Habitat:
             eid
             scheme
         """
-
 
     def replyEndRole(self, aid, role=None, scheme=None, eids=None):
         """
@@ -1021,7 +1028,6 @@ class Habitat:
         if eids is None:
             eids = []
 
-
     def replyToOobi(self, aid):
         """
         Reply returns a message stream composed from entries authed by the given
@@ -1037,7 +1043,6 @@ class Habitat:
         # default logic is that if self.pre is witness of aid and has a loc url
         # for self then reply with loc scheme for all witnesses even if self
         # not permiteed in .habs.oobis
-
 
     def makeOwnEvent(self, sn):
         """

@@ -874,13 +874,7 @@ def deltate(pre,
         raise ValueError("Invalid sn = {} for rot.".format(sn))
 
     if sith is None:
-        sith = max(1, ceil(len(keys) / 2))
-
-    if isinstance(sith, int):
-        if sith < 1 or sith > len(keys):  # out of bounds sith
-            raise ValueError("Invalid sith = {} for keys = {}".format(sith, keys))
-    else:  # list sith not yet supported
-        raise ValueError("invalid sith = {}.".format(sith))
+        sith = "{:x}".format(max(1, ceil(len(keys) / 2)))
 
     wits = wits if wits is not None else []
     witset = oset(wits)
@@ -913,7 +907,7 @@ def deltate(pre,
                          "and adds = {}.".format(wits, cuts, adds))
 
     if isinstance(toad, str):
-        toad = "{:x}".format(toad)
+        toad = int(toad, 16)
     elif toad is None:
         if not newitset:
             toad = 0
@@ -936,7 +930,7 @@ def deltate(pre,
                s="{:x}".format(sn),  # hex string no leading zeros lowercase
                t=ilk,
                p=dig,  # qb64 digest of prior event
-               kt="{:x}".format(sith),  # hex string no leading zeros lowercase
+               kt=sith,  # hex string no leading zeros lowercase
                k=keys,  # list of qb64
                n=nxt,  # hash qual Base64
                bt="{:x}".format(toad),  # hex string no leading zeros lowercase
@@ -2542,6 +2536,7 @@ class Kevery:
 
             else:  # rot, drt, or ixn, so sn matters
                 kever = self.kevers[pre]  # get existing kever for pre
+                kever.cues = self.cues
                 sno = kever.sn + 1  # proper sn of new inorder event
 
                 if sn > sno:  # sn later than sno so out of order escrow
@@ -4365,8 +4360,12 @@ class Kevery:
                     couple = self.db.getPde(dgkey)
                     if couple is not None:
                         seqner, diger = deSourceCouple(couple)
-                    elif eserder.ked["t"] in (Ilks.dip,):
-                        for evts in self.db.clonePreIter(pre=eserder.ked["di"]):
+                    elif eserder.ked["t"] in (Ilks.dip, Ilks.drt, ):
+                        if eserder.pre in self.kevers:
+                            delpre = self.kevers[eserder.pre].delegator
+                        else:
+                            delpre = eserder.ked["di"]
+                        for evts in self.db.clonePreIter(pre=delpre):
                             srdr = coring.Serder(raw=evts)
                             if "a" in srdr.ked:
                                 ancs = srdr.ked["a"]
@@ -4416,7 +4415,7 @@ class Kevery:
                 except Exception as ex:  # log diagnostics errors etc
                     # error other than waiting on sigs or seal so remove from escrow
                     self.db.delPse(snKey(pre, sn), edig)  # removes one escrow at key val
-                    if eserder is not None and eserder.ked["t"] in (Ilks.dip, Ilks.drt):
+                    if eserder is not None and eserder.ked["t"] in (Ilks.dip, Ilks.drt, ):
                         self.cues.append(dict(kin="psUnescrow", serder=eserder))
 
                     if logger.isEnabledFor(logging.DEBUG):
@@ -4430,7 +4429,7 @@ class Kevery:
                     # valid event escrow.
                     self.db.delPse(snKey(pre, sn), edig)  # removes one escrow at key val
                     self.db.delPde(dgkey)  # remove escrow if any
-                    if eserder is not None and eserder.ked["t"] in (Ilks.dip, Ilks.drt):
+                    if eserder is not None and eserder.ked["t"] in (Ilks.dip, Ilks.drt, ):
                         self.cues.append(dict(kin="psUnescrow", serder=eserder))
                     logger.info("Kevery unescrow succeeded in valid event: "
                                 "event=\n%s\n", json.dumps(eserder.ked, indent=1))

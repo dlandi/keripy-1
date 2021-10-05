@@ -345,7 +345,7 @@ class MailboxDirector(doing.DoDoer):
 
         #  neeeds unique kevery with ims per remoter connnection
         self.kvy = kvy if kvy is not None else eventing.Kevery(db=self.hab.db,
-                                                               lax=False,
+                                                               lax=True,
                                                                local=False,
                                                                direct=False)
 

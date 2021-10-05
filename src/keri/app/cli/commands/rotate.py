@@ -123,10 +123,10 @@ class RotateDoer(doing.DoDoer):
         if self.wits:
             if self.adds or self.cuts:
                 raise kering.ConfigurationError("you can only specify witnesses or cuts and add")
-            ewits = self.hab.kever.lastEst.wits
+            ewits = self.hab.kever.wits
 
             # wits= [a,b,c]  wits=[b, z]
-            self.cuts = set(self.wits) & set(ewits)
+            self.cuts = set(ewits) - set(self.wits)
             self.adds = set(self.wits) - set(ewits)
 
 
