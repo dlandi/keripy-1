@@ -11,6 +11,7 @@ from hio.base import doing
 from hio.core import http
 from hio.core.tcp import serving
 from hio.help import decking
+from keri.app import agenting
 
 from . import habbing, keeping, directing, storing, httping
 from .. import help
@@ -357,7 +358,9 @@ class MailboxDirector(doing.DoDoer):
             self.tevery = None
 
         if self.exchanger is not None:
-            doers.extend([doing.doify(self.exchangerDo)])
+            self.witq = agenting.WitnessInquisitor(hab=hab)
+            doers.extend([self.witq, doing.doify(self.exchangerDo)])
+
 
         self.parser = parsing.Parser(ims=self.ims,
                                      framed=True,
@@ -521,10 +524,22 @@ class MailboxDirector(doing.DoDoer):
         """
         yield  # enter context
         while True:
+            self.exchanger.processEscrow()
+            yield
+
+            while self.exchanger.cues:
+                cue = self.exchanger.cues.popleft()
+                cueKin = cue["kin"]
+                if cueKin == "query":
+                    qargs = cue["q"]
+                    self.witq.query(**qargs)
+                yield
+
             for rep in self.exchanger.processResponseIter():
                 self.rep.reps.append(rep)
                 yield  # throttle just do one cue at a time
             yield
+
 
 
 class Poller(doing.DoDoer):
@@ -591,7 +606,6 @@ class Poller(doing.DoDoer):
                 idx = evt["id"]
                 msg = evt["data"]
                 tpc = evt["name"]
-                # ser = coring.Serder(raw=msg.encode("utf-8"))
 
                 self.msgs.append(msg.encode("utf=8"))
 

@@ -94,7 +94,7 @@ def runAgent(controller, name="agent", insecure=False, tcp=5621, adminHttpPort=5
     tcpServerDoer = tcpServing.ServerDoer(server=server)
     directant = directing.Directant(hab=hab, server=server)
 
-    reger = viring.Registry(name=hab.name, temp=False)
+    reger = viring.Registry(name=hab.name, temp=False, db=hab.db)
     verifier = verifying.Verifier(hab=hab, name=hab.name, reger=reger)
     wallet = walleting.Wallet(db=verifier.reger, name=name)
 
@@ -147,7 +147,6 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
                    path=STATIC_DIR_PATH):
     app = falcon.App(middleware=falcon.CORSMiddleware(
         allow_origins='*', allow_credentials='*', expose_headers=['cesr-attachment', 'cesr-date', 'content-type']))
-    print("creating static sink for", path)
     sink = http.serving.StaticSink(staticDirPath=path)
     app.add_sink(sink, prefix=sink.DefaultStaticSinkBasePath)
 
@@ -286,6 +285,7 @@ class AdminCueHandler(doing.DoDoer):
                             wits = kever.wits
                         else:
                             wits = srdr.ked["b"]
+
                         witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.HttpWitnesser, wits=wits)
                         self.extend([witq])
 

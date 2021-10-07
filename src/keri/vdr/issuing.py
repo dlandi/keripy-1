@@ -110,10 +110,6 @@ class Issuer:
             self.tvy = eventing.Tevery(reger=self.reger, db=self.hab.db, regk=self.regk, local=True)
             self.psr = parsing.Parser(framed=True, kvy=self.hab.kvy, tvy=self.tvy)
 
-            clone = self.reger.clonePreIter(self.regk)
-            for msg in clone:
-                self.psr.parseOne(ims=msg)
-
             if self.regk not in self.tevers:
                 raise kering.ConfigurationError("Improper Issuer inception for "
                                                 "pre={}.".format(self.regk))

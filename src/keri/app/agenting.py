@@ -553,7 +553,6 @@ class KiwiServer(doing.DoDoer):
                     exn = exchanging.exchange(route="/credential/issue", payload=pl)
                     self.rep.reps.append(dict(dest=recpt, rep=exn, topic="credential"))
 
-
                 elif cueKin == "query":
                     qargs = cue["q"]
                     self.witq.query(**qargs)
@@ -986,22 +985,21 @@ class KiwiServer(doing.DoDoer):
             pre = group.gid
 
         saids = issuer.reger.issus.get(keys=pre)
-        creds = self.get_credentials(issuer, saids)
+        creds = self.get_credentials(saids)
 
         rep.status = falcon.HTTP_200
         rep.content_type = "application/json"
         rep.data = json.dumps(creds).encode("utf-8")
 
 
-    @staticmethod
-    def get_credentials(issuer, saids):
+    def get_credentials(self, saids):
         creds = []
         for saider in saids:
             key = saider.qb64b
-            creder = issuer.reger.creds.get(keys=key)
+            creder = self.verifier.reger.creds.get(keys=key)
 
             # TODO:  de-dupe the seals here and extract the signatures
-            seals = issuer.reger.seals.get(keys=key)
+            seals = self.verifier.reger.seals.get(keys=key)
             prefixer = None
             seqner = None
             diger = None
@@ -1010,7 +1008,8 @@ class KiwiServer(doing.DoDoer):
                 (prefixer, seqner, diger, siger) = seal
                 sigers.append(siger)
 
-            status, lastSeen = issuer.tevers[issuer.regk].vcState(key)
+            regk = creder.status
+            status, lastSeen = self.verifier.tevers[regk].vcState(key)
             cred = dict(
                 sad=creder.crd,
                 pre=prefixer.qb64,
@@ -1034,9 +1033,6 @@ class KiwiServer(doing.DoDoer):
             rep: falcon.Response HTTP response
 
         """
-        registry = req.params["registry"]
-        issuer = self.getIssuer(registry)
-
         group = self.hab.group()
 
         if group is None:
@@ -1044,8 +1040,8 @@ class KiwiServer(doing.DoDoer):
         else:
             pre = group.gid
 
-        saids = issuer.reger.subjs.get(keys=pre)
-        creds = self.get_credentials(issuer, saids)
+        saids = self.verifier.reger.subjs.get(keys=pre)
+        creds = self.get_credentials(saids)
 
         rep.status = falcon.HTTP_200
         rep.content_type = "application/json"

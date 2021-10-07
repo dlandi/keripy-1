@@ -9,12 +9,59 @@ A special purpose Verifiable Data Registry (VDR)
 """
 from dataclasses import dataclass
 
-from keri.db import koming, subing
+from keri.db import koming, subing, basing
 
 from .. import kering
 from ..core import coring
 from ..db import dbing
 from ..vc import proving
+
+
+class regerdict(dict):
+    """
+    Subclass of dict that has db as attribute and employs read through cash
+    from db Baser.stts of kever states to reload kever from state in database
+    if not in memory as dict item
+    """
+    __slots__ = ('reger', 'db', 'klas')  # no .__dict__ just for db reference
+
+    def __init__(self, *pa, **kwa):
+        super(regerdict, self).__init__(*pa, **kwa)
+        self.db = None
+        self.reger = None
+
+    def __getitem__(self, k):
+        from ..vdr import eventing
+        try:
+            return super(regerdict, self).__getitem__(k)
+        except KeyError as ex:
+            if not self.db or not self.reger:
+                raise ex  # reraise KeyError
+            if (state := self.reger.states.get(keys=k)) is None:
+                raise ex  # reraise KeyError
+            try:
+                tever = eventing.Tever(state=state, db=self.db, reger=self.reger)
+            except kering.MissingEntryError:  # no kel event for keystate
+                raise ex  # reraise KeyError
+            self.__setitem__(k, tever)
+            return tever
+
+    def __contains__(self, k):
+        if not super(regerdict, self).__contains__(k):
+            try:
+                self.__getitem__(k)
+                return True
+            except KeyError:
+                return False
+        else:
+            return True
+
+    def get(self, k, default=None):
+        if not super(regerdict, self).__contains__(k):
+            return default
+        else:
+            return self.__getitem__(k)
+
 
 
 @dataclass
@@ -156,8 +203,16 @@ class Registry(dbing.LMDBer):
         self.mce = None
         self.mse = None
         self.mase = None
+        self.states = None  # key states
 
-        self._tevers = dict()
+
+        if "db" in kwa:
+            self._tevers = regerdict()
+            self._tevers.reger = self  # assign db for read thorugh cache of kevers
+            self._tevers.db = kwa["db"]
+        else:
+            self._tevers = dict()
+
 
         super(Registry, self).__init__(headDirPath=headDirPath, reopen=reopen, **kwa)
 
@@ -189,6 +244,8 @@ class Registry(dbing.LMDBer):
         self.twes = self.env.open_db(key=b'twes.')
         self.taes = self.env.open_db(key=b'taes.')
         self.tets = subing.CesrSuber(db=self, subkey='tets.', klas=coring.Dater)
+
+        self.states = subing.SerderSuber(db=self, subkey='stts.')  # key states
 
         # Holds the credential
         self.creds = proving.CrederSuber(db=self, subkey="creds.")
@@ -227,7 +284,6 @@ class Registry(dbing.LMDBer):
         self.regs = koming.Komer(db=self,
                                  subkey='regs.',
                                  schema=RegistryRecord, )
-
 
         return self.env
 
