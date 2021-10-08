@@ -3,13 +3,6 @@
 tests.help.test_filing module
 
 """
-import pytest
-
-import os
-
-from keri.help import filing
-
-from keri import help
 
 
 def test_filing():
