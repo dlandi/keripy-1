@@ -95,7 +95,7 @@ def runAgent(controller, name="agent", insecure=False, tcp=5621, adminHttpPort=5
 
     reger = viring.Registry(name=hab.name, temp=False, db=hab.db)
     verifier = verifying.Verifier(hab=hab, name=hab.name, reger=reger)
-    wallet = walleting.Wallet(db=verifier.reger, name=name)
+    wallet = walleting.Wallet(reger=verifier.reger, name=name)
 
     handlers = []
 
@@ -156,30 +156,31 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
                                      rep=rep, issuerCues=issuerCues, insecure=insecure)
 
     mbxer = storing.MailboxServer(app=app, hab=hab, mbx=mbx)
-    wiq = agenting.WitnessInquisitor(hab=hab)
 
-    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, reger=verifier.reger, wiq=wiq,
+    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, reger=verifier.reger,
                                      proofs=proofs)
     cueHandler = AdminCueHandler(hab=hab, controller=controller, mbx=mbx, cues=cues)
     server = http.Server(port=adminHttpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
 
-    doers = [httpServerDoer, rep, mbxer, wiq, proofHandler, cueHandler, gdoer, kiwiServer]
+    doers = [httpServerDoer, rep, mbxer, proofHandler, cueHandler, gdoer, kiwiServer]
 
     return doers
 
 
-class AdminProofHandler(doing.Doer):
-    def __init__(self, hab, controller, mbx, reger, wiq, proofs=None, **kwa):
+class AdminProofHandler(doing.DoDoer):
+    def __init__(self, hab, controller, mbx, reger, proofs=None, **kwa):
         self.hab = hab
         self.controller = controller
         self.mbx = mbx
         self.verifier = verifying.Verifier(hab=hab, reger=reger)
         self.presentations = proofs if proofs is not None else decking.Deck()
-        self.wiq = wiq
-        super(AdminProofHandler, self).__init__(**kwa)
 
-    def do(self, tymth, tock=0.0, **opts):
+        doers = [doing.doify(self.presentationDo), doing.doify(self.verifierDo)]
+
+        super(AdminProofHandler, self).__init__(doers=doers, **kwa)
+
+    def presentationDo(self, tymth, tock=0.0, **opts):
         """
 
         Handle proofs presented externally
@@ -206,18 +207,58 @@ class AdminProofHandler(doing.Doer):
 
                 proving.parseCredential(ims=msg, verifier=self.verifier)
 
-                # print("STORING VC PROOF FOR MY CONTROLLER", self.controller, pl)
-                #
-                # # TODO: Add SAID signature on exn, then sanction `fwd` envelope
-                # ser = exchanging.exchange(route="/cmd/presentation/proof", payload=pl)
-                # msg = bytearray(ser.raw)
-                # msg.extend(self.hab.sanction(ser))
-                #
-                # self.mbx.storeMsg(self.controller + "/credential", msg)
-
                 yield
 
             yield
+
+    def verifierDo(self, tymth, tock=0.0, **opts):
+        """
+        Process cues from Verifier coroutine
+
+            tymth is injected function wrapper closure returned by .tymen() of
+                Tymist instance. Calling tymth() returns associated Tymist .tyme.
+            tock is injected initial tock value
+            opts is dict of injected optional additional parameters
+        """
+        self.wind(tymth)
+        self.tock = tock
+        yield self.tock
+
+        self.verifier.processEscrows()
+        yield self.tock
+
+        while True:
+            while self.verifier.cues:
+                cue = self.verifier.cues.popleft()
+                cueKin = cue["kin"]
+
+                if cueKin == "saved":
+                    creder = cue["creder"]
+                    proof = cue["proof"]
+                    prefixer, seqner, diger, isigers = proving.parseProof(ims=proof)
+                    cred = dict(
+                        sad=creder.crd,
+                        pre=prefixer.qb64,
+                        sn=seqner.sn,
+                        dig=diger.qb64,
+                        sigers=[sig.qb64 for sig in isigers],
+                        status="issued",
+                        # lastSeen=lastSeen.dts,
+                    )
+
+
+                    print("STORING VC PROOF FOR MY CONTROLLER", self.controller, cred)
+
+                    ser = exchanging.exchange(route="/cmd/presentation/proof", payload=cred)
+                    msg = bytearray(ser.raw)
+                    msg.extend(self.hab.sanction(ser))
+
+
+                    print("saving in", self.controller + "/presentation")
+                    self.mbx.storeMsg(self.controller + "/presentation", msg)
+                yield self.tock
+            yield self.tock
+
 
 
 class AdminCueHandler(doing.DoDoer):

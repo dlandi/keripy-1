@@ -55,7 +55,7 @@ def runWallet(name="wallet"):
 
     hab, doers = existing.openHabitat(name=name)
     verifier = verifying.Verifier(hab=hab, name=name)
-    wallet = walleting.Wallet(db=verifier.reger, name=name)
+    wallet = walleting.Wallet(reger=verifier.reger, name=name)
     walletDoer = walleting.WalletDoer(hab=hab, verifier=verifier)
 
     jsonSchema = scheming.JSONSchema(resolver=scheming.jsonSchemaCache)

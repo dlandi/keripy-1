@@ -312,21 +312,18 @@ class Verifier:
                 self.processCredential(creder, prefixer, seqner, diger, sigers)
 
             except etype as ex:
-                print(ex)
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.exception("Verifiery unescrow failed: %s\n", ex.args[0])
                 else:
                     logger.error("Verifier unescrow failed: %s\n", ex.args[0])
             except Exception as ex:  # log diagnostics errors etc
                 # error other than missing sigs so remove from PA escrow
-                print(ex)
                 db.rem(said)
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.exception("Verifier unescrowed: %s\n", ex.args[0])
                 else:
                     logger.error("Verifier unescrowed: %s\n", ex.args[0])
             else:
-                print("clean")
                 db.rem(said)
                 logger.info("Verifier unescrow succeeded in valid group op: "
                             "creder=\n%s\n", creder.pretty())

@@ -3,6 +3,8 @@
 keri.vc.handling module
 
 """
+import json
+
 from hio.base import doing
 from hio.help import decking
 from keri import kering
@@ -328,8 +330,6 @@ class IssueHandler(doing.DoDoer):
 
                     vs = crd["v"]
 
-                    print("got credential")
-
                     kind, version, size = Deversify(vs)
                     raw = dumps(ked=crd, kind=kind)
                     if len(raw) != size:
@@ -364,8 +364,6 @@ class IssueHandler(doing.DoDoer):
                 if cueKin == "saved":
                     creder = cue["creder"]
 
-                    logger.info("Credential: %s, Schema: %s,  Saved", creder.said, creder.schema)
-                    logger.info(creder.pretty())
                     print("Credential: {}, Schema: {},  Saved".format(creder.said, creder.schema))
                     print(creder.pretty())
 
@@ -445,7 +443,7 @@ class RequestHandler(doing.Doer):
                         matches.append(credentials[0])
 
                 if len(matches) > 0:
-                    pe = presentation_exchange(matches)
+                    pe = presentation_exchange(reger=self.wallet.reger, credentials=matches)
                     exn = exchanging.exchange(route="/presentation/proof", payload=pe)
                     self.cues.append(dict(dest=requestor.qb64, rep=exn, topic="credential"))
 
@@ -530,6 +528,8 @@ class ProofHandler(doing.Doer):
                 payload = msg["payload"]
                 pre = msg["pre"]
 
+                print(json.dumps(payload, indent=2))
+
                 if "presentation_submission" not in payload:
                     raise ValueError("invalid presentation proof payload")
 
@@ -542,11 +542,10 @@ class ProofHandler(doing.Doer):
                 if "descriptor_map" not in pe:
                     raise ValueError("invalud presentation submission in proof payload")
 
+                # TODO:  Find verifiable credential in vcs based on `path`
                 dm = pe["descriptor_map"]
 
-                for idx, descriptor in enumerate(dm):
-                    # TODO:  Find verifiable credential in vcs based on `path`
-                    vc = vcs[idx]
+                for vc in vcs:
                     self.proofs.append((pre, vc))
 
                 yield
@@ -577,7 +576,7 @@ def envelope(msg):
     )
 
 
-def presentation_exchange(credentials):
+def presentation_exchange(reger, credentials):
     dm = []
     vcs = []
 
@@ -588,11 +587,12 @@ def presentation_exchange(credentials):
             format="cesr",
             path="$.verifiableCredential[{}]".format(idx)
         ))
+        craw = viring.messagize(creder=creder, proof=proof)
+        vcs.append(envelope(craw))
 
-        vcs.append(dict(
-            vc=creder.crd,
-            proof=proof.decode("utf-8")
-        ))
+        sources = reger.sources(creder)
+        vcs.extend([envelope(craw) for craw in sources])
+
 
     d = dict(
         presentation_submission=dict(

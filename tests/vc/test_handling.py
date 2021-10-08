@@ -179,7 +179,7 @@ def test_proving():
         assert creder.said == "E8sY-Bf_kmJ1ducVjMXrvfoyxgw1zmst-h-dUswjZ_rg"
 
         msg = sidHab.endorse(serder=creder)
-        hanWallet = Wallet(db=hanPDB)
+        hanWallet = Wallet(reger=hanPDB)
 
         issuer.issue(creder=creder)
         parseCredential(ims=msg,
