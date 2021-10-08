@@ -281,6 +281,10 @@ class Respondant(doing.DoDoer):
         self.tock = tock
         _ = (yield self.tock)
 
+        if self.hab.kever.wits:
+            self.witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.TCPWitnesser)
+            self.extend([self.witq])
+
         while True:
             while self.reps:
                 rep = self.reps.popleft()
@@ -289,7 +293,8 @@ class Respondant(doing.DoDoer):
                 topic = rep["topic"]
 
                 while recipient not in self.hab.kevers:
-                    yield self.tock
+                    self.witq.query(pre=recipient)
+                    yield 1.0
 
                 kever = self.hab.kevers[recipient]
                 if kever is None:

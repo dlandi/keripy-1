@@ -10,11 +10,11 @@ import logging
 from typing import Type
 
 from hio.help import decking
+from keri.vdr import viring
 
 from .. import help, kering
 from ..core import parsing, coring, scheming
 from ..help import helping
-from ..vc import proving
 from ..vdr import eventing
 from ..vdr.eventing import VcStates
 from ..vdr.viring import Registry
@@ -179,7 +179,7 @@ class Verifier:
 
 
         self.saveCredential(creder, prefixer, seqner, diger, sigers)
-        proof = proving.buildProof(prefixer, seqner, diger, sigers)
+        proof = viring.buildProof(prefixer, seqner, diger, sigers)
         self.cues.append(dict(kin="saved", creder=creder, proof=proof))
 
     def escrowPSC(self, creder, prefixer, seqner, diger, sigers):
@@ -312,18 +312,21 @@ class Verifier:
                 self.processCredential(creder, prefixer, seqner, diger, sigers)
 
             except etype as ex:
+                print(ex)
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.exception("Verifiery unescrow failed: %s\n", ex.args[0])
                 else:
                     logger.error("Verifier unescrow failed: %s\n", ex.args[0])
             except Exception as ex:  # log diagnostics errors etc
                 # error other than missing sigs so remove from PA escrow
+                print(ex)
                 db.rem(said)
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.exception("Verifier unescrowed: %s\n", ex.args[0])
                 else:
                     logger.error("Verifier unescrowed: %s\n", ex.args[0])
             else:
+                print("clean")
                 db.rem(said)
                 logger.info("Verifier unescrow succeeded in valid group op: "
                             "creder=\n%s\n", creder.pretty())

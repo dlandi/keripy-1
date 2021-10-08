@@ -3856,6 +3856,12 @@ class Kevery:
             for msg in cloner:
                 msgs.extend(msg)
 
+            kever = self.kevers[pre]
+            if kever.delegator:
+                cloner = self.db.clonePreIter(pre=kever.delegator, fn=0)  # create iterator at 0
+                for msg in cloner:
+                    msgs.extend(msg)
+
             if msgs:
                 self.cues.push(dict(kin="replay", msgs=msgs, dest=src))
         else:

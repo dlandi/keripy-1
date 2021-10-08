@@ -7,7 +7,7 @@ from hio.base import doing
 from hio.help import decking
 from keri import kering
 from keri.help import helping
-from keri.vdr import issuing
+from keri.vdr import issuing, viring
 
 from . import proving
 from .. import help
@@ -16,7 +16,7 @@ from ..core.coring import dumps, Deversify
 from ..core.scheming import JSONSchema
 from ..kering import ShortageError
 from ..peer import exchanging
-from ..vc.proving import Credentialer, buildProof
+from ..vc.proving import Credentialer
 
 logger = help.ogler.getLogger()
 
@@ -524,7 +524,9 @@ class ProofHandler(doing.Doer):
 
         while True:
             while self.msgs:
+                print("got back a proof")
                 msg = self.msgs.popleft()
+                print(msg)
                 payload = msg["payload"]
                 pre = msg["pre"]
 
@@ -552,13 +554,13 @@ class ProofHandler(doing.Doer):
             yield
 
 
-def envelope(msg, typ=JSONSchema()):
+def envelope(msg):
     """
     Returns a dict of a VC split into the "vc" and "proof"
 
     Parameters:
         msg: bytes of verifiable credential to split
-        typ: schema type of the VC
+
     """
 
     ims = bytearray(msg)
@@ -580,7 +582,7 @@ def presentation_exchange(credentials):
     vcs = []
 
     for idx, (creder, prefixer, seqner, diger, sigers) in enumerate(credentials):
-        proof = buildProof(prefixer, seqner, diger, sigers)
+        proof = viring.buildProof(prefixer, seqner, diger, sigers)
         dm.append(dict(
             id=creder.schema,
             format="cesr",

@@ -536,6 +536,7 @@ class MailboxDirector(doing.DoDoer):
                 yield
 
             for rep in self.exchanger.processResponseIter():
+                print("getting from exchanger", rep)
                 self.rep.reps.append(rep)
                 yield  # throttle just do one cue at a time
             yield

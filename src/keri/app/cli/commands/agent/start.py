@@ -63,7 +63,6 @@ parser.add_argument("-p", "--path",
 def launch(args):
     help.ogler.level = logging.CRITICAL
     help.ogler.reopen(name="keri", temp=True, clear=True)
-    logger = help.ogler.getLogger()
 
     print("\n******* Starting Agent for {} listening: http/{}, tcp/{} "
           ".******\n\n".format(args.name, args.admin_http_port, args.tcp))
@@ -127,7 +126,7 @@ def runAgent(controller, name="agent", insecure=False, tcp=5621, adminHttpPort=5
                                       topics=["/receipt", "/replay", "/multisig", "/credential", "/delegate"],
                                       cues=cues)
     # configure a kevery
-    doers.extend([exchanger, directant, tcpServerDoer, mbd])
+    doers.extend([exchanger, directant, tcpServerDoer, mbd, rep])
     doers.extend(adminInterface(controller=controller,
                                 hab=hab,
                                 insecure=insecure,
@@ -151,7 +150,6 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
     app.add_sink(sink, prefix=sink.DefaultStaticSinkBasePath)
 
     rep = storing.Respondant(hab=hab, mbx=mbx)
-
     gdoer = grouping.MultiSigGroupDoer(hab=hab, ims=mbd.ims)
 
     kiwiServer = agenting.KiwiServer(hab=hab, controller=controller, verifier=verifier, gdoer=gdoer.msgs, app=app,
@@ -160,7 +158,8 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
     mbxer = storing.MailboxServer(app=app, hab=hab, mbx=mbx)
     wiq = agenting.WitnessInquisitor(hab=hab)
 
-    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, verifier=verifier, wiq=wiq, proofs=proofs)
+    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, reger=verifier.reger, wiq=wiq,
+                                     proofs=proofs)
     cueHandler = AdminCueHandler(hab=hab, controller=controller, mbx=mbx, cues=cues)
     server = http.Server(port=adminHttpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
@@ -171,11 +170,11 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
 
 class AdminProofHandler(doing.Doer):
-    def __init__(self, hab, controller, mbx, verifier, wiq, proofs=None, **kwa):
+    def __init__(self, hab, controller, mbx, reger, wiq, proofs=None, **kwa):
         self.hab = hab
         self.controller = controller
         self.mbx = mbx
-        self.verifier = verifier
+        self.verifier = verifying.Verifier(hab=hab, reger=reger)
         self.presentations = proofs if proofs is not None else decking.Deck()
         self.wiq = wiq
         super(AdminProofHandler, self).__init__(**kwa)
@@ -202,22 +201,19 @@ class AdminProofHandler(doing.Doer):
 
                 creder = proving.Credentialer(crd=vc)
 
-                prefixer, seqner, diger, isigers = proving.parseProof(vcproof)
-                status = self.verifier.verify(pre, creder, prefixer, seqner, diger, isigers)
-                pl = dict(
-                    pre=pre.qb64,
-                    vc=vc,
-                    status=status,
-                )
+                msg = bytearray(creder.raw)
+                msg.extend(vcproof)
 
-                print("STORING VC PROOF FOR MY CONTROLLER", self.controller, pl)
+                proving.parseCredential(ims=msg, verifier=self.verifier)
 
-                # TODO: Add SAID signature on exn, then sanction `fwd` envelope
-                ser = exchanging.exchange(route="/cmd/presentation/proof", payload=pl)
-                msg = bytearray(ser.raw)
-                msg.extend(self.hab.sanction(ser))
-
-                self.mbx.storeMsg(self.controller + "/credential", msg)
+                # print("STORING VC PROOF FOR MY CONTROLLER", self.controller, pl)
+                #
+                # # TODO: Add SAID signature on exn, then sanction `fwd` envelope
+                # ser = exchanging.exchange(route="/cmd/presentation/proof", payload=pl)
+                # msg = bytearray(ser.raw)
+                # msg.extend(self.hab.sanction(ser))
+                #
+                # self.mbx.storeMsg(self.controller + "/credential", msg)
 
                 yield
 

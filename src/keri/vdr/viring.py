@@ -329,6 +329,41 @@ class Registry(dbing.LMDBer):
             msg.extend(atc)
             yield msg
 
+    def sources(self, creder):
+        """
+        Returns raw bytes of any source ('p') credential that is in our database
+         
+        Parameters:
+            creder is Credentialer root credential
+             
+        """
+        chains = creder.crd["p"]
+        saids = []
+        for source in chains:
+            for _, data in source.items():
+                saids.append(data['d'])
+
+        sources = []
+        for said in saids:
+            key = said.encode("utf-8")
+            creder = self.creds.get(keys=key)
+
+            # TODO:  de-dupe the seals here and extract the signatures
+            seals = self.seals.get(keys=key)
+            prefixer = None
+            seqner = None
+            diger = None
+            sigers = []
+            for seal in seals:
+                (prefixer, seqner, diger, siger) = seal
+                sigers.append(siger)
+        
+            proof = buildProof(prefixer=prefixer, seqner=seqner, diger=diger, sigers=sigers)
+            craw = messagize(creder=creder, proof=proof)
+            sources.append(craw)
+            
+        return sources    
+
 
     def putTvt(self, key, val):
         """
@@ -719,3 +754,49 @@ def nsKey(comps):
     comps = map(lambda p: p if not hasattr(p, "encode") else p.encode("utf-8"), comps)
     return b':'.join(comps)
 
+
+
+def buildProof(prefixer, seqner, diger, sigers):
+    """
+    Create CESR proof attachment from the quadlet of seal plus signatures on the credential
+    
+    Parameters:
+        prefixer (Prefixer) Identifier of the issuer of the credential
+        seqner (Seqner) is the sequence number of the event used to sign the credential
+        diger (Diger) is the digest of the event used to sign the credential
+        sigers (list) are the cryptographic signatures on the credential
+
+    """
+
+    prf = bytearray()
+    prf.extend(coring.Counter(coring.CtrDex.TransIdxSigGroups, count=1).qb64b)
+    prf.extend(prefixer.qb64b)
+    prf.extend(seqner.qb64b)
+    prf.extend(diger.qb64b)
+
+    prf.extend(coring.Counter(code=coring.CtrDex.ControllerIdxSigs, count=len(sigers)).qb64b)
+    for siger in sigers:
+        prf.extend(siger.qb64b)
+
+    return prf
+
+
+def messagize(creder, proof):
+    """
+    Create a CESR message format with proof attachment for credential
+    
+    Parameters
+        creder is Credentialer instance of credential 
+        proof is str CESR proof attachment 
+    :return: 
+    """
+    
+    craw = bytearray(creder.raw)
+    if len(proof) % 4:
+        raise ValueError("Invalid attachments size={}, nonintegral"
+                         " quadlets.".format(len(proof)))
+    craw.extend(coring.Counter(code=coring.CtrDex.AttachedMaterialQuadlets,
+                               count=(len(proof) // 4)).qb64b)
+    craw.extend(proof)
+
+    return craw

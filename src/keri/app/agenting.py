@@ -14,6 +14,7 @@ from hio.core import http
 from hio.core.tcp import clienting
 from hio.help import decking
 from keri.app import forwarding
+from keri.vdr import viring
 from orderedset import OrderedSet as oset
 
 from . import httping, grouping
@@ -186,7 +187,7 @@ class WitnessInquisitor(doing.DoDoer):
             witer = random.choice(witers)
             witer.msgs.append(bytearray(msg))
 
-            yield
+            yield 2.0
 
     def msgDo(self, tymth=None, tock=0.0, **opts):
         self.wind(tymth)
@@ -537,17 +538,15 @@ class KiwiServer(doing.DoDoer):
 
                     recpt = creder.subject["i"]
 
-                    craw = bytearray(creder.raw)
-                    if len(proof) % 4:
-                        raise ValueError("Invalid attachments size={}, nonintegral"
-                                         " quadlets.".format(len(proof)))
-                    craw.extend(coring.Counter(code=coring.CtrDex.AttachedMaterialQuadlets,
-                                               count=(len(proof) // 4)).qb64b)
+                    craw = viring.messagize(creder, proof)
+                    vcs = [handling.envelope(craw)]
 
-                    craw.extend(proof)
+                    sources = self.verifier.reger.sources(creder)
+                    for craw in sources:
+                        vcs.extend([handling.envelope(craw)])
 
                     pl = dict(
-                        vc=[handling.envelope(craw)]
+                        vc=vcs
                     )
 
                     exn = exchanging.exchange(route="/credential/issue", payload=pl)
