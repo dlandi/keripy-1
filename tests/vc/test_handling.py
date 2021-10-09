@@ -231,8 +231,9 @@ def test_proving():
         assert len(vcs) == 1
 
         proof = (
-            "-FABE4YPqsEOaPNaZxVIbY-Gx2bJgP-c7AH_K7pEE-YfcI9E0AAAAAAAAAAAAAAAAAAAAAAAElHzHwX3V6itsD2Ksg_CNBbUNTBYzLYw"
-            "-AxDNI7_ZmaI-AABAA0pFYDPH3jqvS4z-6lSefLLg-Zr7-IABhP69VruJUFK3SwP_x0ksPzknQq6Q4kV8bR9lyxb8pHFQyFAonj_agAA"
+            "-VA0-FABE4YPqsEOaPNaZxVIbY-Gx2bJgP-c7AH_K7pEE"
+            "-YfcI9E0AAAAAAAAAAAAAAAAAAAAAAAElHzHwX3V6itsD2Ksg_CNBbUNTBYzLYw-AxDNI7_ZmaI-AABAA0pFYDPH3jqvS4z-6lSefLLg"
+            "-Zr7-IABhP69VruJUFK3SwP_x0ksPzknQq6Q4kV8bR9lyxb8pHFQyFAonj_agAA"
         )
 
         assert vcs[0]["proof"] == proof

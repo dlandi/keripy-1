@@ -212,6 +212,14 @@ def parseProof(ims=b''):
         raise ColdStartError("unable to parse VC, attachments expected")
 
     ctr = Parser.extract(ims=ims, klas=Counter, cold=cold)
+    if ctr.code == CtrDex.AttachedMaterialQuadlets:  # check for pipelined
+        pags = ctr.count * 4
+        if len(ims) != pags:
+            raise ShortageError("VC proof attachment invalid length {}, expected {}"
+                                "".format(len(ims), pags))
+
+        ctr = Parser.extract(ims=ims, klas=Counter, cold=cold)
+
     if ctr.code != CtrDex.TransIdxSigGroups or ctr.count != 1:
         raise ExtractionError("Invalid attachment to VC {}, expected one {}"
                               "".format(ctr.code, CtrDex.TransIdxSigGroups))

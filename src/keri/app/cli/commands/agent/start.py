@@ -157,8 +157,7 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
     mbxer = storing.MailboxServer(app=app, hab=hab, mbx=mbx)
 
-    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, reger=verifier.reger,
-                                     proofs=proofs)
+    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, verifier=verifier, proofs=proofs)
     cueHandler = AdminCueHandler(hab=hab, controller=controller, mbx=mbx, cues=cues)
     server = http.Server(port=adminHttpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
@@ -169,14 +168,14 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
 
 class AdminProofHandler(doing.DoDoer):
-    def __init__(self, hab, controller, mbx, reger, proofs=None, **kwa):
+    def __init__(self, hab, controller, mbx, verifier, proofs=None, **kwa):
         self.hab = hab
         self.controller = controller
         self.mbx = mbx
-        self.verifier = verifying.Verifier(hab=hab, reger=reger)
+        self.verifier = verifier
         self.presentations = proofs if proofs is not None else decking.Deck()
 
-        doers = [doing.doify(self.presentationDo), doing.doify(self.verifierDo)]
+        doers = [doing.doify(self.presentationDo)]
 
         super(AdminProofHandler, self).__init__(doers=doers, **kwa)
 
@@ -207,58 +206,33 @@ class AdminProofHandler(doing.DoDoer):
 
                 proving.parseCredential(ims=msg, verifier=self.verifier)
 
+                while True:
+                    c = self.verifier.reger.creds.get(creder.said)
+                    if c is not None:
+                        break
+                    yield
+
+                prefixer, seqner, diger, isigers = proving.parseProof(ims=vcproof)
+                cred = dict(
+                    sad=creder.crd,
+                    pre=prefixer.qb64,
+                    sn=seqner.sn,
+                    dig=diger.qb64,
+                    sigers=[sig.qb64 for sig in isigers],
+                    status="issued",
+                )
+
+
+                ser = exchanging.exchange(route="/cmd/presentation/proof", payload=cred)
+                msg = bytearray(ser.raw)
+                msg.extend(self.hab.sanction(ser))
+
+                self.mbx.storeMsg(self.controller + "/presentation", msg)
+
+
                 yield
 
             yield
-
-    def verifierDo(self, tymth, tock=0.0, **opts):
-        """
-        Process cues from Verifier coroutine
-
-            tymth is injected function wrapper closure returned by .tymen() of
-                Tymist instance. Calling tymth() returns associated Tymist .tyme.
-            tock is injected initial tock value
-            opts is dict of injected optional additional parameters
-        """
-        self.wind(tymth)
-        self.tock = tock
-        yield self.tock
-
-        self.verifier.processEscrows()
-        yield self.tock
-
-        while True:
-            while self.verifier.cues:
-                cue = self.verifier.cues.popleft()
-                cueKin = cue["kin"]
-
-                if cueKin == "saved":
-                    creder = cue["creder"]
-                    proof = cue["proof"]
-                    prefixer, seqner, diger, isigers = proving.parseProof(ims=proof)
-                    cred = dict(
-                        sad=creder.crd,
-                        pre=prefixer.qb64,
-                        sn=seqner.sn,
-                        dig=diger.qb64,
-                        sigers=[sig.qb64 for sig in isigers],
-                        status="issued",
-                        # lastSeen=lastSeen.dts,
-                    )
-
-
-                    print("STORING VC PROOF FOR MY CONTROLLER", self.controller, cred)
-
-                    ser = exchanging.exchange(route="/cmd/presentation/proof", payload=cred)
-                    msg = bytearray(ser.raw)
-                    msg.extend(self.hab.sanction(ser))
-
-
-                    print("saving in", self.controller + "/presentation")
-                    self.mbx.storeMsg(self.controller + "/presentation", msg)
-                yield self.tock
-            yield self.tock
-
 
 
 class AdminCueHandler(doing.DoDoer):
@@ -319,9 +293,14 @@ class AdminCueHandler(doing.DoDoer):
                     if self.hab.kever.delegator is None:
                         if srdr.pre in self.hab.kevers:
                             kever = self.hab.kevers[srdr.pre]
+                            delpre = kever.delegator
                             wits = kever.wits
                         else:
                             wits = srdr.ked["b"]
+                            delpre = srdr.ked["di"]
+
+                        if delpre != self.hab.pre:
+                            continue
 
                         witq = agenting.WitnessInquisitor(hab=self.hab, klas=agenting.HttpWitnesser, wits=wits)
                         self.extend([witq])

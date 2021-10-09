@@ -522,13 +522,9 @@ class ProofHandler(doing.Doer):
 
         while True:
             while self.msgs:
-                print("got back a proof")
                 msg = self.msgs.popleft()
-                print(msg)
                 payload = msg["payload"]
                 pre = msg["pre"]
-
-                print(json.dumps(payload, indent=2))
 
                 if "presentation_submission" not in payload:
                     raise ValueError("invalid presentation proof payload")
