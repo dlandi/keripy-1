@@ -41,7 +41,6 @@ def setupWitness(name="witness", hab=None, mbx=None, temp=False, tcpPort=5631, h
         habDoer = habbing.HabitatDoer(habitat=hab)  # setup doer
         doers.extend([ksDoer, dbDoer, habDoer])
 
-    print("Witness", name, ":", hab.pre)
     verfer = verifying.Verifier(name=name, hab=hab)
     app = falcon.App(cors_enable=True)
 
@@ -62,9 +61,24 @@ def setupWitness(name="witness", hab=None, mbx=None, temp=False, tcpPort=5631, h
 
     directant = directing.Directant(hab=hab, server=server, verifier=verfer)
 
-    doers.extend([regDoer, directant, serverDoer, mbxer, httpServerDoer, httpHandler, rep])
+    witStart = WitnessStart(name=name, hab=hab)
+
+    doers.extend([regDoer, directant, serverDoer, mbxer, httpServerDoer, httpHandler, rep, witStart])
 
     return doers
+
+
+class WitnessStart (doing.Doer):
+    def __init__(self, name, hab, **opts):
+        self.hab = hab
+        self.name = name
+        super().__init__(**opts)
+
+    def do(self,  tymth=None, tock=0.0, **opts):
+        while not self.hab.inited:
+            yield self.tock
+
+        print("Witness", self.name, ":", self.hab.pre)
 
 
 class Indirector(doing.DoDoer):

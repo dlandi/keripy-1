@@ -18,9 +18,16 @@ kli rotate --name trans --data @./tests/app/cli/anchor.json
 
 kli interact --name trans --data @./tests/app/cli/anchor.json
 
-kli rotate --name non-trans --next-count 3 --sith 2
+kli rotate --name trans --next-count 3 --sith 2
 
-kli sign --name non-trans --text @tests/app/cli/anchor.json
+kli sign --name trans --text @tests/app/cli/anchor.json
+
+kli verify --name trans --prefix Ep_l4FJyHxcZBc6JIP7sG3YKBfuMaLJe9dktrz1wX9x4 --text @tests/app/cli/anchor.json --signature AAr6xD1YJW4fFJkoHU7JhtnixOjE8ubouxzUdoe1Hmc4GKnu7KoeZN1s4BD9ctaQVmyxTq0QszqZSzdJAQhDBACw
+
+kli verify --name trans --prefix Ep_l4FJyHxcZBc6JIP7sG3YKBfuMaLJe9dktrz1wX9x4 --text @tests/app/cli/anchor.json --signature ABEA7Wj4BDnM7UgCWspZKa9Cinnhh3G4P39umZGhUyMi-APp55oKQ-J2s5UuXmihLCCROtWFkpKY3kxmzqx-2LBw
+
+kli verify --name trans --prefix Ep_l4FJyHxcZBc6JIP7sG3YKBfuMaLJe9dktrz1wX9x4 --text @tests/app/cli/anchor.json --signature ACSHdal6kHAAjbW_frH83sDDCoBHw_nNKFysW5Dj8PSsnwVPePCNw-kFmF6Z8H87q7D3abw_5u2i4jmzdnWFsRDQ
+
 
 # ESTABLISHMENT ONLY
 kli incept --name est-only --file tests/app/cli/estonly-sample.json
@@ -31,8 +38,6 @@ kli rotate --name est-only
 
 # WITNESSES
 kli witness start --name non-trans --http 5631 --tcp 5632
-
-rm -rf /usr/local/var/keri/*; kli witness demo
 
 kli witness demo
 
@@ -67,6 +72,7 @@ kli incept --name multisig3 --file tests/app/cli/commands/multisig/multisig-3-sa
 
 kli multisig demo --file tests/app/cli/commands/multisig/multisig-sample.json
 
+kli multisig list --name multisig3
 
 # MULTISIG DELEGATION
 
