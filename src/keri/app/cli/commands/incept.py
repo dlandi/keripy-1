@@ -36,6 +36,7 @@ class InceptOptions:
     isith: int
     ncount: int
     nsith: int
+    estOnly: bool = False
 
 
 def handler(args):

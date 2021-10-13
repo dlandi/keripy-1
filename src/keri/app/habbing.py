@@ -173,7 +173,7 @@ class Habitat:
 
     def setup(self, *, seed=None, aeid=None, secrecies=None, code=coring.MtrDex.Blake3_256,
               isith=None, icount=1, nsith=None, ncount=None,
-              toad=None, wits=None, algo=None, salt=None, tier=None, delpre=None):
+              toad=None, wits=None, algo=None, salt=None, tier=None, delpre=None, estOnly=False):
         """
         Setup habitat. Assumes that both .db and .ks have been opened.
         This allows dependency injection of .db and .ks into habitat instance
@@ -286,11 +286,16 @@ class Habitat:
             else:
                 nxt = ""
 
+            cnfg = []
+            if estOnly:
+                cnfg.append(eventing.TraitCodex.EstOnly)
+
             if self.delpre:
                 serder = eventing.delcept(keys=[verfer.qb64 for verfer in verfers],
                                           delpre=self.delpre,
                                           wits=wits,
                                           toad=toad,
+                                          cnfg=cnfg,
                                           nxt=coring.Nexter(digs=[diger.qb64 for diger in digers]).qb64)
                 # save off serder and verfers for delegation acceptance
                 self.delserder = serder
@@ -301,6 +306,7 @@ class Habitat:
                                          nxt=nxt,
                                          toad=toad,
                                          wits=wits,
+                                         cnfg=cnfg,
                                          code=code)
 
             self.pre = serder.ked["i"]  # new pre

@@ -49,7 +49,6 @@ def rotate(args):
     else:
         data = None
 
-    print(args)
     rotDoer = RotateDoer(name=name, proto=args.proto, wits=args.witnesses, cuts=args.cuts, adds=args.witness_add,
                          sith=args.sith, count=args.next_count, toad=args.toad, erase=args.erase, data=data)
 
@@ -60,6 +59,10 @@ def rotate(args):
     except kering.ConfigurationError:
         print(f"identifier prefix for {name} does not exist, incept must be run first", )
         return -1
+    except ValueError as ex:
+        print(ex.args[0])
+        return -1
+
 
 
 
