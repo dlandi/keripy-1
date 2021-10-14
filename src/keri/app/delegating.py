@@ -34,7 +34,11 @@ class Delegatey:
         self.notified = False
 
     def processMessage(self, msg):
-        salt = coring.Salter(raw=msg["salt"].encode("utf-8")).qb64
+        if len(msg["salt"]) != 16:
+            salt = coring.Salter().qb64
+        else:
+            salt = coring.Salter(raw=msg["salt"].encode("utf-8")).qb64
+
         seed = msg["seed"] if "seed" in msg else None
         wits = msg["wits"] if "wits" in msg else None
         toad = msg["toad"] if "toad" in msg else None
