@@ -531,8 +531,6 @@ class KiwiServer(doing.DoDoer):
                     creder = cue["creder"]
                     proof = cue["proof"]
 
-                    logger.info("Credential: %s, Schema: %s,  Saved", creder.said, creder.schema)
-                    logger.info(creder.pretty())
                     print("Credential: {}, Schema: {},  Saved".format(creder.said, creder.schema))
                     print(creder.pretty())
 
@@ -605,22 +603,30 @@ class KiwiServer(doing.DoDoer):
                 cueKin = cue['kin']
                 if cueKin == "send":
                     tevt = cue["msg"]
-                    witSender = WitnessPublisher(hab=self.hab, msg=tevt)
+                    subject = cue["sub"]
+                    witSender = WitnessPublisher(hab=self.hab, msg=bytearray(tevt))
                     self.extend([witSender])
 
                     while not witSender.done:
                         _ = yield self.tock
 
                     self.remove([witSender])
+                    if subject is not None:
+                        self.postman.send(recipient=subject["i"], topic="credential", msg=bytearray(tevt))
                 elif cueKin == "kevt":
                     kevt = cue["msg"]
-                    witDoer = WitnessReceiptor(hab=self.hab, msg=kevt)
+                    subject = cue["sub"]
+                    witDoer = WitnessReceiptor(hab=self.hab, msg=bytearray(kevt))
                     self.extend([witDoer])
 
                     while not witDoer.done:
                         yield self.tock
 
                     self.remove([witDoer])
+                    if subject is not None:
+                        evt = coring.Serder(raw=kevt)
+                        msg = self.hab.db.cloneEvtMsg(pre=evt.pre, fn=evt.sn, dig=evt.digb)
+                        self.postman.send(recipient=subject["i"], topic="credential", msg=bytearray(msg))
                 elif cueKin == "multisig":
                     msg = dict(
                         op=cue["op"],
@@ -760,7 +766,8 @@ class KiwiServer(doing.DoDoer):
             return
 
         try:
-            issuer.revoke(vcdig=said)
+            creder = self.verifier.reger.creds.get(keys=said)
+            issuer.revoke(creder=creder)
         except kering.ValidationError as ex:
             rep.status = falcon.HTTP_CONFLICT
             rep.text = ex.args[0]

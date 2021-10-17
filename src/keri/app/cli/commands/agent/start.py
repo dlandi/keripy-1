@@ -61,7 +61,7 @@ parser.add_argument("-p", "--path",
 
 
 def launch(args):
-    help.ogler.level = logging.CRITICAL
+    help.ogler.level = logging.INFO
     help.ogler.reopen(name="keri", temp=True, clear=True)
 
     print("\n******* Starting Agent for {} listening: http/{}, tcp/{} "
