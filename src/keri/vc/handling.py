@@ -409,7 +409,17 @@ class RequestHandler(doing.Doer):
 
     resource = "/presentation/request"
 
-    def __init__(self, wallet, cues=None, **kwa):
+    def __init__(self, hab, wallet, cues=None, **kwa):
+        """
+        Create an `exn` request handler for processing credential presentation requests
+
+        Parameters
+            hab (Habitate) is the environment
+            wallet (Wallet) is the wallet holding the credentials to present
+            cues (decking.Deck) of responses cue'ed up by this handler
+
+        """
+        self.hab = hab
         self.msgs = decking.Deck()
         self.cues = cues if cues is not None else decking.Deck()
         self.wallet = wallet
@@ -443,7 +453,7 @@ class RequestHandler(doing.Doer):
                         matches.append(credentials[0])
 
                 if len(matches) > 0:
-                    pe = presentation_exchange(reger=self.wallet.reger, credentials=matches)
+                    pe = presentation_exchange(db=self.hab.db, reger=self.wallet.reger, credentials=matches)
                     exn = exchanging.exchange(route="/presentation/proof", payload=pe)
                     self.cues.append(dict(dest=requestor.qb64, rep=exn, topic="credential"))
 
@@ -549,14 +559,16 @@ class ProofHandler(doing.Doer):
             yield
 
 
-def envelope(msg):
+def envelope(msg, msgs=bytearray()):
     """
     Returns a dict of a VC split into the "vc" and "proof"
 
     Parameters:
         msg: bytes of verifiable credential to split
+        msgs: optional event log messages in support of the credential
 
     """
+
 
     ims = bytearray(msg)
     try:
@@ -568,15 +580,42 @@ def envelope(msg):
 
     return dict(
         vc=creder.crd,
-        proof=ims.decode("utf-8")
+        proof=ims.decode("utf-8"),
+        msgs=msgs.decode("utf-8")
     )
 
 
-def presentation_exchange(reger, credentials):
+def presentation_exchange(db, reger, credentials):
+    """
+    Create a presentation exchange body containing the credential and event logs
+    needed to provide proof of holding a valid credential
+
+    Parameters:
+        db (Baser) is the environment database
+        reger (Registry) is the credential registry database
+        credentials (List) is the list of credential instances
+
+    """
     dm = []
     vcs = []
 
     for idx, (creder, prefixer, seqner, diger, sigers) in enumerate(credentials):
+        said = creder.said
+        regk = creder.status
+        vci = viring.nsKey([regk, said])
+
+        issr = creder.crd["i"]
+
+        msgs = bytearray()
+        for msg in db.clonePreIter(pre=issr):
+            msgs.extend(msg)
+
+        for msg in reger.clonePreIter(pre=regk):
+            msgs.extend(msg)
+
+        for msg in reger.clonePreIter(pre=vci):
+            msgs.extend(msg)
+
         proof = viring.buildProof(prefixer, seqner, diger, sigers)
         dm.append(dict(
             id=creder.schema,
@@ -584,7 +623,7 @@ def presentation_exchange(reger, credentials):
             path="$.verifiableCredential[{}]".format(idx)
         ))
         craw = viring.messagize(creder=creder, proof=proof)
-        vcs.append(envelope(craw))
+        vcs.append(envelope(craw, msgs))
 
         sources = reger.sources(creder)
         vcs.extend([envelope(craw) for craw in sources])
@@ -594,7 +633,7 @@ def presentation_exchange(reger, credentials):
         presentation_submission=dict(
             descriptor_map=dm
         ),
-        verifiableCredential=vcs
+        verifiableCredential=vcs,
     )
 
     return d

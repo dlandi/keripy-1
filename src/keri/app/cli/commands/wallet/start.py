@@ -60,7 +60,7 @@ def runWallet(name="wallet"):
 
     jsonSchema = scheming.JSONSchema(resolver=scheming.jsonSchemaCache)
     issueHandler = handling.IssueHandler(hab=hab, verifier=verifier, typ=jsonSchema)
-    requestHandler = handling.RequestHandler(wallet=wallet, typ=jsonSchema)
+    requestHandler = handling.RequestHandler(hab=hab, wallet=wallet, typ=jsonSchema)
     exchanger = exchanging.Exchanger(hab=hab, handlers=[issueHandler, requestHandler])
 
     mbx = storing.Mailboxer(name=name)

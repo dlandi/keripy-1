@@ -190,7 +190,7 @@ def test_proving():
         assert hanPDB.creds.get(key) is not None
 
         # Create Red's wallet and Issue Handler for receiving the credential
-        hanRequestHandler = RequestHandler(wallet=hanWallet)
+        hanRequestHandler = RequestHandler(hab=hanHab, wallet=hanWallet)
         hanExc = exchanging.Exchanger(hab=hanHab, tymth=doist.tymen(), handlers=[hanRequestHandler])
 
         # Create the issue credential payload

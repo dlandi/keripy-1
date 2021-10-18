@@ -123,8 +123,9 @@ class Verifier:
             self.cues.append(dict(kin="telquery", q=dict(r="tels", ri=regk, i=vcid)))
             raise kering.MissingRegistryError("credential identifier {} is out of date".format(vcid))
         elif state is VcStates.revoked:  # no escrow, credential has been revoked
-            raise kering.InvalidCredentialStateError("credential {} in registrying is not in issued state".format(vcid,
-                                                                                                                  regk))
+            logger.error("credential {} in registrying is not in issued state".format(vcid, regk))
+            # Log this and continue instead of the previous exception so we save a revoked credential.
+            # raise kering.InvalidCredentialStateError("..."))
 
         # we don't know about this issuer
         if creder.issuer not in self.hab.kevers:

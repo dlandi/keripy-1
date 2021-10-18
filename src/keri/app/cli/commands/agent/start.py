@@ -104,7 +104,7 @@ def runAgent(controller, name="agent", insecure=False, tcp=5621, adminHttpPort=5
 
     jsonSchema = scheming.JSONSchema(resolver=scheming.jsonSchemaCache)
     issueHandler = handling.IssueHandler(hab=hab, verifier=verifier, typ=jsonSchema)
-    requestHandler = handling.RequestHandler(wallet=wallet, typ=jsonSchema)
+    requestHandler = handling.RequestHandler(hab=hab, wallet=wallet, typ=jsonSchema)
     applyHandler = handling.ApplyHandler(hab=hab, verifier=verifier, name=name, issuerCues=issuerCues)
     proofHandler = handling.ProofHandler(proofs=proofs)
 
@@ -157,7 +157,8 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
     mbxer = storing.MailboxServer(app=app, hab=hab, mbx=mbx)
 
-    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, verifier=verifier, proofs=proofs)
+    proofHandler = AdminProofHandler(hab=hab, controller=controller, mbx=mbx, verifier=verifier, proofs=proofs,
+                                     ims=mbd.ims)
     cueHandler = AdminCueHandler(hab=hab, controller=controller, mbx=mbx, cues=cues)
     server = http.Server(port=adminHttpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
@@ -168,12 +169,13 @@ def adminInterface(controller, hab, insecure, proofs, cues, issuerCues, mbx, mbd
 
 
 class AdminProofHandler(doing.DoDoer):
-    def __init__(self, hab, controller, mbx, verifier, proofs=None, **kwa):
+    def __init__(self, hab, controller, mbx, verifier, proofs=None, ims=None, **kwa):
         self.hab = hab
         self.controller = controller
         self.mbx = mbx
         self.verifier = verifier
         self.presentations = proofs if proofs is not None else decking.Deck()
+        self.ims = ims if ims is not None else bytearray()
 
         doers = [doing.doify(self.presentationDo)]
 
@@ -198,12 +200,17 @@ class AdminProofHandler(doing.DoDoer):
                 (pre, presentation) = self.presentations.popleft()
                 vc = presentation["vc"]
                 vcproof = bytearray(presentation["proof"].encode("utf-8"))
+                msgs = bytearray(presentation["msgs"].encode("utf-8"))
+                self.ims.extend(msgs)
+                yield
 
                 creder = proving.Credentialer(crd=vc)
 
+                # Remove credential from database so we revalidate it fully
+                self.verifier.reger.creds.rem(creder.said)
+
                 msg = bytearray(creder.raw)
                 msg.extend(vcproof)
-
                 proving.parseCredential(ims=msg, verifier=self.verifier)
 
                 while True:
@@ -211,6 +218,8 @@ class AdminProofHandler(doing.DoDoer):
                     if c is not None:
                         break
                     yield
+
+
 
                 prefixer, seqner, diger, isigers = proving.parseProof(ims=vcproof)
                 cred = dict(
@@ -227,7 +236,7 @@ class AdminProofHandler(doing.DoDoer):
                 msg = bytearray(ser.raw)
                 msg.extend(self.hab.sanction(ser))
 
-                self.mbx.storeMsg(self.controller + "/presentation", msg)
+                # self.mbx.storeMsg(self.controller + "/presentation", msg)
 
 
                 yield

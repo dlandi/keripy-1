@@ -79,7 +79,7 @@ def setupController(secrets, witnessPort=5631, localPort=5629, indirect=False):
 
     verifier = verifying.Verifier(hab=hab, reger=reger)
     issueHandler = handling.IssueHandler(hab=hab, verifier=verifier, typ=jsonSchema)
-    requestHandler = handling.RequestHandler(wallet=wallet, typ=jsonSchema)
+    requestHandler = handling.RequestHandler(hab=hab, wallet=wallet, typ=jsonSchema)
 
     witnessClient = clienting.Client(host='127.0.0.1', port=witnessPort, wl=wl)
     witnessClientDoer = clienting.ClientDoer(client=witnessClient)
