@@ -348,6 +348,7 @@ class Verifier:
 
         # Look up indicies
         saider = creder.saider
+        self.reger.saved.pin(keys=saider.qb64b, val=saider)
         self.reger.issus.add(keys=issuer, val=saider)
         self.reger.subjs.add(keys=subject, val=saider)
         self.reger.schms.add(keys=schema, val=saider)

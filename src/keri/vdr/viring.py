@@ -193,6 +193,7 @@ class Registry(dbing.LMDBer):
         self.cdts = None
         self.cpse = None
         self.seals = None
+        self.saved = None
         self.issus = None
         self.subjs = None
         self.schms = None
@@ -257,6 +258,8 @@ class Registry(dbing.LMDBer):
         # Partially signed credential escrow
         self.cpse = subing.CesrSuber(db=self, subkey='cpse.', klas=coring.Saider)
 
+        # Index of credentials processed and saved.  Indicates fully verified (even if revoked)
+        self.saved = subing.CesrSuber(db=self, subkey='saved.', klas=coring.Saider)
         # Index of credentials by issuer.  My credentials issued, key == hab.pre
         self.issus = subing.CesrDupSuber(db=self, subkey='issus.', klas=coring.Saider)
         # Index of credentials by subject.  My credentials received, key == hab.pre

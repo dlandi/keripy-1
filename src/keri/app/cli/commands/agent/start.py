@@ -175,9 +175,11 @@ class AdminProofHandler(doing.DoDoer):
         self.mbx = mbx
         self.verifier = verifier
         self.presentations = proofs if proofs is not None else decking.Deck()
+        self.parsed = decking.Deck()
+
         self.ims = ims if ims is not None else bytearray()
 
-        doers = [doing.doify(self.presentationDo)]
+        doers = [doing.doify(self.presentationDo), doing.doify(self.parsedDo)]
 
         super(AdminProofHandler, self).__init__(doers=doers, **kwa)
 
@@ -202,45 +204,66 @@ class AdminProofHandler(doing.DoDoer):
                 vcproof = bytearray(presentation["proof"].encode("utf-8"))
                 msgs = bytearray(presentation["msgs"].encode("utf-8"))
                 self.ims.extend(msgs)
-                yield
+                yield 3.0
 
                 creder = proving.Credentialer(crd=vc)
 
                 # Remove credential from database so we revalidate it fully
-                self.verifier.reger.creds.rem(creder.said)
+                self.verifier.reger.saved.rem(creder.said)
 
                 msg = bytearray(creder.raw)
                 msg.extend(vcproof)
                 proving.parseCredential(ims=msg, verifier=self.verifier)
-
-                while True:
-                    c = self.verifier.reger.creds.get(creder.said)
-                    if c is not None:
-                        break
-                    yield
-
-
-
-                prefixer, seqner, diger, isigers = proving.parseProof(ims=vcproof)
-                cred = dict(
-                    sad=creder.crd,
-                    pre=prefixer.qb64,
-                    sn=seqner.sn,
-                    dig=diger.qb64,
-                    sigers=[sig.qb64 for sig in isigers],
-                    status="issued",
-                )
-
-
-                ser = exchanging.exchange(route="/cmd/presentation/proof", payload=cred)
-                msg = bytearray(ser.raw)
-                msg.extend(self.hab.sanction(ser))
-
-                # self.mbx.storeMsg(self.controller + "/presentation", msg)
-
+                self.parsed.append((creder, vcproof))
 
                 yield
 
+            yield
+
+    def parsedDo(self, tymth, tock=0.0, **opts):
+        """
+
+        Handle proofs presented externally
+
+        Parameters:
+            payload is dict representing the body of a /credential/issue message
+            pre is qb64 identifier prefix of sender
+            sigers is list of Sigers representing the sigs on the /credential/issue message
+            verfers is list of Verfers of the keys used to sign the message
+
+        """
+        yield  # enter context
+
+        while True:
+            while self.parsed:
+                (creder, vcproof) = self.parsed.popleft()
+
+                c = self.verifier.reger.saved.get(creder.said)
+                if c is None:
+                    self.parsed.append((creder, vcproof))
+
+                else:
+                    regk = creder.status
+                    state, lastSeen = self.verifier.tevers[regk].vcState(creder.said)
+
+                    prefixer, seqner, diger, isigers = proving.parseProof(ims=vcproof)
+                    cred = dict(
+                        sad=creder.crd,
+                        pre=prefixer.qb64,
+                        sn=seqner.sn,
+                        dig=diger.qb64,
+                        sigers=[sig.qb64 for sig in isigers],
+                        status=state,
+                    )
+
+
+                    ser = exchanging.exchange(route="/cmd/presentation/proof", payload=cred)
+                    msg = bytearray(ser.raw)
+                    msg.extend(self.hab.sanction(ser))
+
+                    self.mbx.storeMsg(self.controller + "/presentation", msg)
+
+                yield
             yield
 
 

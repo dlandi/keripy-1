@@ -217,6 +217,8 @@ class ApplyHandler(doing.DoDoer):
                                             source=source,
                                             status=self.issuer.regk)
                 try:
+                    print("about to issue")
+                    print(creder.pretty())
                     self.issuer.issue(creder=creder, dt=dt)
                 except kering.MissingAnchorError:
                     logger.info("Missing anchor from credential issuance due to multisig identifier")
@@ -321,7 +323,6 @@ class IssueHandler(doing.DoDoer):
         while True:
             while self.msgs:
                 msg = self.msgs.popleft()
-                print("got message")
                 payload = msg["payload"]
                 envelopes = payload["vc"]
                 for envlop in envelopes:
