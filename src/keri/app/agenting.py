@@ -790,7 +790,16 @@ class KiwiServer(doing.DoDoer):
         """
         body = json.loads(req.context.raw)
         recipientIdentifier = body.get("recipient")
+        if recipientIdentifier is None:
+            rep.status = falcon.HTTP_400
+            rep.text = "recipient is required, none provided"
+            return
+
         schema = body.get("schema")
+        if schema is None:
+            rep.status = falcon.HTTP_400
+            rep.text = "schema is required, none provided"
+            return
 
         pl = dict(
             input_descriptors=[
