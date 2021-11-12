@@ -8,7 +8,6 @@ VC TEL  support
 
 import json
 import logging
-from collections import namedtuple
 
 from hio.help import decking
 from math import ceil
@@ -21,7 +20,7 @@ from .. import help
 from ..core.coring import (MtrDex, Serder, Serials, Versify, Prefixer,
                            Ilks, Seqner, Verfer)
 from ..core.eventing import SealEvent, ample, TraitDex, verifySigs, validateSN
-from ..db import basing
+from ..db import basing, dbing
 from ..db.dbing import dgKey, snKey
 from ..help import helping
 from ..kering import (MissingWitnessSignatureError, Version,
@@ -39,11 +38,7 @@ BIS_LABELS = ["v", "i", "s", "t", "ra", "dt"]
 REV_LABELS = ["v", "i", "s", "t", "p", "dt"]
 BRV_LABELS = ["v", "i", "s", "t", "ra", "p", "dt"]
 
-TSN_LABELS = ["v", "i", "s", "t", "d", "ri", "et", "bt", "b", "c", "br", "ba"]
-
-VcState = namedtuple("VcState", 'issued revoked expired')
-
-VcStates = VcState(issued='issued', revoked="revoked", expired="expired")
+TSN_LABELS = ["v", "i", "s", "t", "d", "ii", "a", "et", "bt", "b", "c", "br", "ba"]
 
 
 def incept(
@@ -415,6 +410,7 @@ def state(pre,
           eilk,
           br,
           ba,
+          a,
           dts=None,  # default current datetime
           toad=None,  # default based on wits
           wits=None,  # default to []
@@ -453,8 +449,8 @@ def state(pre,
         "d": "EAoTNZH3ULvaU6JR2nmwyYAfSVPzhzZ-i0d8JZS6b5CM",
         "ri": "EYAfSVPzhzZ-i0d8JZS6b5CMAoTNZH3ULvaU6JR2nmwy",
         "dt": "2020-08-22T20:35:06.687702+00:00",
-        "et": "rot",
-        "kt": "1",
+        "et": "vrt",
+        "a": {i=12, d="EYAfSVPzhzS6b5CMaU6JR2nmwyZ-i0d8JZAoTNZH3ULv"},
         "k": ["DaU6JR2nmwyZ-i0d8JZAoTNZH3ULvYAfSVPzhzS6b5CM"],
         "n": "EZ-i0d8JZAoTNZH3ULvaU6JR2nmwyYAfSVPzhzS6b5CM",
         "bt": "1",
@@ -471,7 +467,7 @@ def state(pre,
     if sn < 0:
         raise ValueError("Negative sn = {} in key state.".format(sn))
 
-    if eilk not in (Ilks.vcp, Ilks.vrt, Ilks.iss, Ilks.bis, Ilks.rev, Ilks.brv):
+    if eilk not in (Ilks.vcp, Ilks.vrt):
         raise ValueError("Invalid evernt type et=  in key state.".format(eilk))
 
     if dts is None:
@@ -508,17 +504,78 @@ def state(pre,
                          ".".format(ba))
 
     ksd = dict(v=vs,  # version string
-               i=pre,  # qb64 prefix
+               i=ri,  # qb64 SAID of the registry
                s="{:x}".format(sn),  # lowercase hex string no leading zeros
                d=dig,
-               ri=ri,
+               ii=pre,
                dt=dts,
                et=eilk,
+               a=a,
                bt="{:x}".format(toad),  # hex string no leading zeros lowercase
                br=br,
                ba=ba,
                b=wits,  # list of qb64 may be empty
                c=cnfg,  # list of config ordered mappings may be empty
+               )
+
+    return Serder(ked=ksd)  # return serialized ksd
+
+
+def vcstate(vcpre,
+            dig,
+            sn,
+            ri,
+            eilk,
+            a,
+            dts=None,  # default current datetime
+            version=Version,
+            kind=Serials.json,
+            ):
+    """
+    Returns serder of credential transaction state notification message.
+    Utility function to automate creation of tsn events.
+
+    Parameters:
+        pre is identifier prefix qb64 of the issuer of the credential
+        sn is int sequence number of latest event
+        dig is digest of latest event
+        eilk is message type (ilk) oflatest event
+        version is Version instance
+        kind is serialization kind
+
+    Credential Transaction State Dict
+    {
+        "v": "KERI10JSON00011c_",
+        "i": "EaU6JR2nmwyZ-i0d8JZAoTNZH3ULvYAfSVPzhzS6b5CM",
+        "s": "2":,
+        "t": "ksn",
+        "d": "EAoTNZH3ULvaU6JR2nmwyYAfSVPzhzZ-i0d8JZS6b5CM",
+        "ri": "EYAfSVPzhzZ-i0d8JZS6b5CMAoTNZH3ULvaU6JR2nmwy",
+        "dt": "2020-08-22T20:35:06.687702+00:00",
+        "et": "rev",
+    }
+
+    """
+
+    vs = Versify(version=version, kind=kind, size=0)
+
+    if sn < 0:
+        raise ValueError("Negative sn = {} in key state.".format(sn))
+
+    if eilk not in (Ilks.iss, Ilks.bis, Ilks.rev, Ilks.brv):
+        raise ValueError("Invalid evernt type et=  in key state.".format(eilk))
+
+    if dts is None:
+        dts = helping.nowIso8601()
+
+    ksd = dict(v=vs,  # version string
+               i=vcpre,  # qb64 prefix
+               s="{:x}".format(sn),  # lowercase hex string no leading zeros
+               d=dig,
+               ri=ri,
+               a=a,
+               dt=dts,
+               et=eilk,
                )
 
     return Serder(ked=ksd)  # return serialized ksd
@@ -742,12 +799,19 @@ class Tever:
         if self.noBackers:
             cnfg.append(TraitDex.NoBackers)
 
+        dgkey = dbing.dgKey(self.regk, self.serder.dig)
+        couple = self.reger.getAnc(dgkey)
+        ancb = bytearray(couple)
+        seqner = coring.Seqner(qb64b=ancb, strip=True)
+        diger = coring.Diger(qb64b=ancb, strip=True)
+
         return (state(pre=self.pre,
                       dig=self.serder.dig,
                       sn=self.sn,
                       ri=self.regk,
                       dts=None,
                       eilk=self.ilk,
+                      a=dict(s=seqner.sn, d=diger.qb64),
                       br=br,
                       ba=ba,
                       toad=self.toad,
@@ -1126,13 +1190,28 @@ class Tever:
             digs.append(dig)
 
         if len(digs) == 0:
-            return None, None
+            return None
 
-        status = VcStates.issued if len(digs) == 1 else VcStates.revoked
-        dig = bytes(digs[-1])
-        lastSeen = self.reger.tets.get(keys=(vci.decode("utf-8"), dig.decode("utf-8")))
+        vcsn = len(digs) - 1
+        vcdig = bytes(digs[-1])
+        if self.noBackers:
+            vcilk = Ilks.iss if len(digs) == 1 else Ilks.rev
+        else:
+            vcilk = Ilks.bis if len(digs) == 1 else Ilks.brv
 
-        return status, lastSeen
+        dgkey = dbing.dgKey(vci, vcdig)
+        couple = self.reger.getAnc(dgkey)
+        ancb = bytearray(couple)
+        seqner = coring.Seqner(qb64b=ancb, strip=True)
+        diger = coring.Diger(qb64b=ancb, strip=True)
+
+        return vcstate(vcpre=vcpre,
+                       dig=vcdig.decode("utf-8"),
+                       sn=vcsn,
+                       ri=self.prefixer.qb64,
+                       eilk=vcilk,
+                       a=dict(s=seqner.sn, d=diger.qb64),
+                       )
 
     def vcSn(self, vcpre):
         """ Calculates the current seq no of VC from db.

@@ -322,7 +322,7 @@ class Registry(dbing.LMDBer):
             chains = self.get_credentials(chainSaids)
 
             regk = creder.status
-            status, lastSeen = self.tevers[regk].vcState(key)
+            status = self.tevers[regk].vcState(saider.qb64)
             cred = dict(
                 sad=creder.crd,
                 pre=prefixer.qb64,
@@ -330,8 +330,7 @@ class Registry(dbing.LMDBer):
                 dig=diger.qb64,
                 sigers=[sig.qb64 for sig in sigers],
                 chains=chains,
-                status=status,
-                # lastSeen=lastSeen.dts,
+                status=status.ked,
             )
 
             creds.append(cred)
